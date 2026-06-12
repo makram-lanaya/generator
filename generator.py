@@ -38,9 +38,9 @@ def path_to_words(path: str) -> list[str]:
     """
     /api/v1/user-profile.php  →  ['api', 'v1', 'user', 'profile']
     """
-    # strip extension
+    
     path = re.sub(r"\.[a-zA-Z0-9]{1,5}$", "", path)
-    # split on /  -  _  .
+   
     parts = re.split(r"[/\-_\.]+", path)
     words = []
     for p in parts:
@@ -53,7 +53,7 @@ def path_to_words(path: str) -> list[str]:
 def js_to_words(js: str) -> list[str]:
     """Pull path-like strings from JS source code."""
     words = []
-    # match quoted strings that look like paths e.g. "/api/users"
+   
     for m in re.findall(r'["\']([/a-zA-Z0-9_\-\.]{3,80})["\']', js):
         if "/" in m:
             words.extend(path_to_words(m))
@@ -92,7 +92,7 @@ def crawl(target: str, depth: int, timeout: int, quiet: bool):
         if not quiet:
             print(f"  [{pages:>3}] {url}")
 
-        # words from the URL path itself
+        
         for w in path_to_words(path):
             wordset.add(w)
         if path not in ("/", ""):
@@ -100,11 +100,11 @@ def crawl(target: str, depth: int, timeout: int, quiet: bool):
 
         ct = r.headers.get("Content-Type", "")
 
-        # ── HTML page ──────────────────────────────────────────
+       
         if "html" in ct:
             soup = BeautifulSoup(r.text, "html.parser")
 
-            # every tag attribute that could hold a URL
+           
             for tag in soup.find_all(True):
                 for attr in ("href", "src", "action", "data-url", "data-href", "data-src"):
                     val = tag.get(attr, "").strip()
@@ -116,28 +116,28 @@ def crawl(target: str, depth: int, timeout: int, quiet: bool):
                     full   = urljoin(url, val)
                     parsed = urlparse(full)
 
-                    # skip external domains
+                   
                     if parsed.netloc and parsed.netloc != netloc:
                         continue
 
                     p_path = parsed.path
                     ext    = (re.search(r"(\.[a-z0-9]{1,5})$", p_path, re.I) or ["",""])[1].lower()
 
-                    # extract words from path
+                   
                     for w in path_to_words(p_path):
                         wordset.add(w)
 
-                    # queue for crawling if HTML-likely
+                    
                     if ext not in SKIP_EXTENSIONS and full not in visited:
                         queue.append(full)
 
-            # inline <script> blocks
+          
             for script in soup.find_all("script"):
                 if script.string:
                     for w in js_to_words(script.string):
                         wordset.add(w)
 
-        # ── external JS file ───────────────────────────────────
+      
         elif "javascript" in ct or url.lower().endswith(".js"):
             for w in js_to_words(r.text):
                 wordset.add(w)
